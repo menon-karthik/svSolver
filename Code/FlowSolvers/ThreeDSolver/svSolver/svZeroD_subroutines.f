@@ -59,11 +59,11 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
       INTEGER loopA
       LOGICAL ierr
 
+      CHARACTER(len=50), ALLOCATABLE :: svzd_blk_names(:)
+
       ALLOCATE(nsrflistCoupled(0:MAXSURF), ECoupled(0:MAXSURF),
      2   QCoupled(0:MAXSURF), QnCoupled(0:MAXSURF), ACoupled(0:MAXSURF),
      2   PCoupled(0:MAXSURF), PnCoupled(0:MAXSURF), PGenDer(0:MAXSURF))
-
-      CHARACTER(len=50), ALLOCATABLE :: svzd_blk_names(:)
 
       ALLOCATE(svzd_blk_names(0:numCoupledSrfs))
 
@@ -242,7 +242,7 @@ c     Get Density
 !           END IF
 !        END DO
 !        CLOSE(1)
-!     END IF
+      END IF
       
       i = MAXSURF + 1
       CALL MPI_BCAST(QCoupled, i, MPI_DOUBLE_PRECISION, master,
