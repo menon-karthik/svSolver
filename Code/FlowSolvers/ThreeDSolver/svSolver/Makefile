@@ -112,6 +112,7 @@ FSRCS   +=  addelmpvsqforsvls-closedloop-coronary.f \
 
 #if (VER_CLOSEDLOOP == 1)
   FSRCS += closedloop_subroutines.f
+  FSRCS += svZeroD_subroutines.f
 #endif
 
 #if (VER_VARWALL == 1)
