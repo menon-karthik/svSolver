@@ -53,7 +53,6 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
       INTEGER, ALLOCATABLE :: nsrflistCoupled(:), ptrDirichlet(:)
 
       REAL*8, ALLOCATABLE  :: ECoupled(:),  ACoupled(:), PDer(:)
-      REAL*8, ALLOCATABLE  :: ACoupled(:)
       REAL*8, ALLOCATABLE  :: QnCoupled(:), QCoupled(:)
       REAL*8, ALLOCATABLE  :: PnCoupled(:), PCoupled(:)
       

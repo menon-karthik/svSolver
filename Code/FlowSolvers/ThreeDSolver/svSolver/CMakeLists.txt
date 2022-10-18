@@ -32,7 +32,10 @@ if(MSVC)
   string(REGEX REPLACE "STACK:10000000,10000000" "STACK:512000000,512000000" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 # Include c++ files
-set(CXXSRCS Cinput.cxx ValType.cxx input_fform.cxx partition.cxx main.cxx)
+set(CXXSRCS Cinput.cxx ValType.cxx input_fform.cxx partition.cxx main.cxx 
+            svZeroD_interface/LPNSolverInterface.cpp 
+            svZeroD_interface/LPNSolverInterface.h 
+            svZeroD_interface/lpn_interface.cpp)
 
 # Include c files
 set(CSRCS getIntPnts.c ShapeFunctions_uniformP.c shptet.c symtri.c symtet.c) # for shape functions
@@ -51,6 +54,7 @@ endif()
 
 if (SV_USE_CLOSEDLOOP)
   set(FSRCS ${FSRCS} modules-closedloop.f)
+  set(FSRCS ${FSRCS} modules_svZeroD.f)
 endif()
 
 set(FSRCS ${FSRCS} solver_subroutines.f)
@@ -76,6 +80,7 @@ endif()
 # Include files for the CLOSEDLOOP VERSION
 if(SV_USE_CLOSEDLOOP)
   set(FSRCS ${FSRCS} closedloop_subroutines.f)
+  set(FSRCS ${FSRCS} svZeroD_subroutines.f)
 endif()
 
 # Include files for the VARWALL VERSION

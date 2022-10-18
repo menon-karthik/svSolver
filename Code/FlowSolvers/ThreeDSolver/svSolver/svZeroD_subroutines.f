@@ -54,6 +54,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
       INCLUDE "common_blocks/workfc.h"
       INCLUDE "common_blocks/conpar.h"
       INCLUDE "common_blocks/nomodule.h"
+      INCLUDE "common_blocks/inpdat.h"
 
       REAL*8 temp(nshg)
       LOGICAL ierr
@@ -129,7 +130,7 @@ c       CHECK AREA
             IF (svzd_blk_ids(j) .EQ. nsrflistCoupled(i)) THEN
               found = 1
               svzd_blk_names(i) = svzd_blk_names_unsrtd(j)
-              blk_name_len(i) = LEN(TRIM(svzd_blk_names(i)))
+              svzd_blk_name_len(i) = LEN(TRIM(svzd_blk_names(i)))
               EXIT
             END IF
           ENDDO
@@ -160,7 +161,7 @@ c       CHECK AREA
         DO i = 1, numCoupledSrfs
           CALL lpn_interface_get_variable_ids(model_id,
      &                         TRIM(svzd_blk_names(i)),
-     &                            blk_name_len(i),ids)
+     &                        svzd_blk_name_len(i),ids)
           sol_IDs(2*(i-1)+1) = ids(0)
           sol_IDs(2*(i-1)+2) = ids(1)
         END DO
@@ -222,7 +223,7 @@ c       CHECK AREA
 
       SUBROUTINE calcSvZeroD (y, yold)
        
-      USE GeneralBC
+      USE svZeroD
       INCLUDE "global.h"
       INCLUDE "mpif.h"
       INCLUDE "common_blocks/conpar.h"
@@ -237,7 +238,7 @@ c       CHECK AREA
      2       enOfEle,rho
 
       REAL*8 testnorm
-      !INTEGER ierri
+      INTEGER ierr
       INTEGER error_code
 
       REAL*8 :: params(2), times(2)
@@ -271,7 +272,7 @@ c     Get Density
       END DO
 
       IF (myrank .EQ. master) THEN
-         IF (svzerod .EQ. 'L') THEN !Last iteration
+         IF (svzerodFlag .EQ. 'L') THEN !Last iteration
             i = numCoupledSrfs
             CALL printSvZeroD (i, nsrflistCoupled(1:i), QCoupled(1:i), 
      2         PCoupled(1:i), ECoupled(1:i))
@@ -281,8 +282,8 @@ c     Get Density
            
             IF (svZeroDTime > 0.0D0) THEN
                ! Set initial condition from previous state
-               lpn_interface_update_state(model_id, last_state_y,
-     &                                           last_state_ydot)
+               CALL lpn_interface_update_state(model_id, last_state_y,
+     &                                                last_state_ydot)
             END IF
 
             times = (/svZeroDTime, svZeroDTime+Delt(1)/)
@@ -295,7 +296,7 @@ c     Get Density
                   params = (/QnCoupled(i), QCoupled(i)/)
                END IF
                CALL lpn_interface_update_block_params(model_id,
-     &                TRIM(svzd_blk_names(i)),blk_name_len(i),
+     &            TRIM(svzd_blk_names(i)),svzd_blk_name_len(i),
      &                                          times,params,2)
             END DO
 
@@ -384,7 +385,7 @@ c     Get Density
 
       SUBROUTINE calcsvZeroDBCDerivative
        
-      USE GeneralBC
+      USE svZeroD
       INCLUDE "global.h"
       INCLUDE "mpif.h"
       INCLUDE "common_blocks/workfc.h"
@@ -416,8 +417,8 @@ c     Get Density
       IF (myrank .EQ. master) THEN
          IF (svZeroDTime > 0.0D0) THEN
             ! Set initial condition from previous state
-            lpn_interface_update_state(model_id, last_state_y,
-     &                                        last_state_ydot)
+            CALL lpn_interface_update_state(model_id, last_state_y,
+     &                                             last_state_ydot)
          END IF
 
          times = (/svZeroDTime, svZeroDTime+Delt(1)/)
@@ -434,7 +435,7 @@ c     Get Density
                   END IF
                END IF
                CALL lpn_interface_update_block_params(model_id,
-     &                 TRIM(svzd_blk_names(i)),blk_name_len(i),
+     &            TRIM(svzd_blk_names(i)),svzd_blk_name_len(i),
      &                                          times,params,2)
             END DO
 
