@@ -52,12 +52,21 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
       INTEGER numCoupledSrfs
       INTEGER, ALLOCATABLE :: nsrflistCoupled(:), ptrDirichlet(:)
 
-      !REAL*8, ALLOCATABLE  :: ECoupled(:),  ACoupled(:), PGenDer(:)
+      REAL*8, ALLOCATABLE  :: ECoupled(:),  ACoupled(:), PDer(:)
       REAL*8, ALLOCATABLE  :: ACoupled(:)
       REAL*8, ALLOCATABLE  :: QnCoupled(:), QCoupled(:)
       REAL*8, ALLOCATABLE  :: PnCoupled(:), PCoupled(:)
+      
+      CHARACTER(len=50), ALLOCATABLE :: svzd_blk_names(:)
+      INTEGER, ALLOCATABLE :: svzd_blk_ids(:), svzd_blk_name_len(:)
+      INTEGER model_id, num_output_steps, system_size
+      REAL*8, ALLOCATABLE :: lpn_solutions(:), lpn_times(:)
+      REAL*8, ALLOCATABLE :: lpn_state_y(:)
+      REAL*8, ALLOCATABLE :: last_state_y(:), last_state_ydot(:)
+      INTEGER, ALLOCATABLE :: sol_IDs(:)
+      REAL*8 svZeroDTime
 
-      !LOGICAL PGenDerFlag
+      LOGICAL PDerFlag
       CHARACTER svzerodFlag
 
       END MODULE

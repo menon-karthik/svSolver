@@ -48,7 +48,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  
       SUBROUTINE initSvZeroD
 
-      USE GeneralBC
+      USE svZeroD
       INCLUDE "global.h"
       INCLUDE "mpif.h"
       INCLUDE "common_blocks/workfc.h"
@@ -56,23 +56,23 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
       INCLUDE "common_blocks/nomodule.h"
 
       REAL*8 temp(nshg)
-      INTEGER loopA
       LOGICAL ierr
-
-      CHARACTER(len=50), ALLOCATABLE :: svzd_blk_names(:)
+      
+      CHARACTER(len=160) svzerod_library, svzerod_file
+      INTEGER :: ids(0:1)
+      CHARACTER(len=50), ALLOCATABLE :: svzd_blk_names_unsrtd(:)
+      INTEGER i,j,found
 
       ALLOCATE(nsrflistCoupled(0:MAXSURF), ECoupled(0:MAXSURF),
      2   QCoupled(0:MAXSURF), QnCoupled(0:MAXSURF), ACoupled(0:MAXSURF),
-     2   PCoupled(0:MAXSURF), PnCoupled(0:MAXSURF), PGenDer(0:MAXSURF))
-
-      ALLOCATE(svzd_blk_names(0:numCoupledSrfs))
+     2   PCoupled(0:MAXSURF), PnCoupled(0:MAXSURF), PDer(0:MAXSURF))
 
       IF (ipvsq .GE. 2) THEN
-         PGenDerFlag = .TRUE.
+         PDerFlag = .TRUE.
       ELSE
-         PGenDerFlag = .FALSE.
+         PDerFlag = .FALSE.
       END IF
-      PGenDer = 0D0     
+      PDer = 0D0     
 
       nsrflistCoupled = nsrflistDirichlet
       nsrflistCoupled(numDirichletSrfs+1:numCoupledSrfs) = 
@@ -85,13 +85,85 @@ c     Eval Area of Coupled Surfaces
       IF (myrank .EQ. master) THEN
 
 c       CHECK AREA
-        DO loopA = 1,numCoupledSrfs
-          IF(ACoupled(loopA).LE.0.0D0)THEN
+        DO i = 1,numCoupledSrfs
+          IF (ACoupled(i) .LE. 0.0D0) THEN
             PRINT *,'' 
-            PRINT *,'WARNING: Zero Area for Coupled Surface ',loopA
+            PRINT *,'WARNING: Zero Area for Coupled Surface ',i
             PRINT *,'' 
-          ENDIF
-        ENDDO
+          END IF
+        END DO
+
+        ! Open the interface file
+        INQUIRE(FILE='svZeroD_interface.dat',EXIST=ierr)
+        IF (.NOT.ierr) THEN
+          PRINT *, 'ERROR: svZeroD_interface.dat not found'
+          STOP
+        END IF
+        OPEN (113,FILE='svZeroD_interface.dat',STATUS='OLD')
+        
+        ! Read the svZeroD library location
+        READ (113, *) ! Header
+        READ (113, '(A)') svzerod_library
+        READ (113, *) ! Blank line
+        
+        ! Read svZeroD input config file name
+        READ (113, *) ! Header
+        READ (113, '(A)') svzerod_file
+        READ (113, *) ! Blank line
+        
+        ! Read svZeroD blocks names and surface IDs
+        ALLOCATE(svzd_blk_names(numCoupledSrfs))
+        ALLOCATE(svzd_blk_names_unsrtd(numCoupledSrfs))
+        ALLOCATE(svzd_blk_ids(numCoupledSrfs))
+        ALLOCATE(svzd_blk_name_len(numCoupledSrfs))
+        READ (113, *) ! Header
+        DO i = 1, numCoupledSrfs
+          READ (113, *) svzd_blk_names_unsrtd(i), svzd_blk_ids(i)
+        END DO
+        CLOSE(113)
+
+        ! Arrange svzd_blk_names in the same order as surface IDs in nsrflistCoupled
+        DO i = 1, numCoupledSrfs
+          found = 0
+          DO j = 1, numCoupledSrfs
+            IF (svzd_blk_ids(j) .EQ. nsrflistCoupled(i)) THEN
+              found = 1
+              svzd_blk_names(i) = svzd_blk_names_unsrtd(j)
+              blk_name_len(i) = LEN(TRIM(svzd_blk_names(i)))
+              EXIT
+            END IF
+          ENDDO
+          IF (found .EQ. 0) THEN
+            WRITE(*,*) "ERROR: Did not find block name for
+     &                surface ID: ", nsrflistCoupled(i)
+            STOP
+          END IF
+        END DO
+
+        CALL lpn_interface_add_model(TRIM(svzerod_library),
+     &                           LEN(TRIM(svzerod_library)),
+     &           TRIM(svzerod_file),LEN(TRIM(svzerod_file)),
+     &               model_id,num_output_steps,system_size)
+
+        CALL lpn_interface_set_external_step_size(model_id,Delt(1))
+
+        ! Allocate variables for svZeroD solution
+        ALLOCATE(lpn_times(0:num_output_steps))
+        ALLOCATE(lpn_solutions(0:num_output_steps*system_size))
+        ALLOCATE(lpn_state_y(0:system_size))
+        ALLOCATE(last_state_y(0:system_size))
+        ALLOCATE(last_state_ydot(0:system_size))
+        svZeroDTime = 0.0D0
+
+        ! Save IDs of relevant variables in the solution vector
+        ALLOCATE(sol_IDs(2*numCoupledSrfs))
+        DO i = 1, numCoupledSrfs
+          CALL lpn_interface_get_variable_ids(model_id,
+     &                         TRIM(svzd_blk_names(i)),
+     &                            blk_name_len(i),ids)
+          sol_IDs(2*(i-1)+1) = ids(0)
+          sol_IDs(2*(i-1)+2) = ids(1)
+        END DO
 
         !TODO
         ! Define library path in modules probably
@@ -165,7 +237,10 @@ c       CHECK AREA
      2       enOfEle,rho
 
       REAL*8 testnorm
-      INTEGER ierr
+      !INTEGER ierri
+      INTEGER error_code
+
+      REAL*8 :: params(2), times(2)
 
 c     Get Density
       rho = datmat(1,1,1)
@@ -196,13 +271,62 @@ c     Get Density
       END DO
 
       IF (myrank .EQ. master) THEN
-         IF (GenFlag .EQ. 'L') THEN
+         IF (svzerod .EQ. 'L') THEN !Last iteration
             i = numCoupledSrfs
             CALL printSvZeroD (i, nsrflistCoupled(1:i), QCoupled(1:i), 
      2         PCoupled(1:i), ECoupled(1:i))
          END IF
 
+         IF (svzerodFlag .NE. 'I') THEN
+           
+            IF (svZeroDTime > 0.0D0) THEN
+               ! Set initial condition from previous state
+               lpn_interface_update_state(model_id, last_state_y,
+     &                                           last_state_ydot)
+            END IF
+
+            times = (/svZeroDTime, svZeroDTime+Delt(1)/)
+
+            ! Update pressure and flow in the zeroD model
+            DO i=1, numCoupledSrfs
+               IF (i .LE. numDirichletSrfs) THEN
+                  params = (/PnCoupled(i), PCoupled(i)/)
+               ELSE
+                  params = (/QnCoupled(i), QCoupled(i)/)
+               END IF
+               CALL lpn_interface_update_block_params(model_id,
+     &                TRIM(svzd_blk_names(i)),blk_name_len(i),
+     &                                          times,params,2)
+            END DO
+
+            ! Run zeroD simulation
+            CALL lpn_interface_run_simulation(model_id, svZeroDTime, 
+     &                         lpn_times, lpn_solutions, error_code)
+
+            ! Extract pressure and flow from zeroD solution
+            lpn_state_y = lpn_solutions((num_output_steps-1)*system_size
+     &                                   :num_output_steps*system_size)
+            DO i=1, numCoupledSrfs
+               IF (i .LE. numDirichletSrfs) THEN
+                  QCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+1))
+               ELSE
+                  PCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
+               END IF
+            END DO
+
+            IF (svzerodFlag .EQ. 'L') THEN !Last iteration
+               ! Save state and update time only after last iteration
+               CALL lpn_interface_return_ydot_(model_id,
+     &                                  last_state_ydot)
+               last_state_y = lpn_state_y
+               ! Keep track of current time
+               svZeroDTime = svZeroDTime + Delt(1)
+            END IF
+         ENDIF
+
+
          ! TODO
+         ! Figure out initial condition
          ! Update block paramaters by sending PnCoupled, PCoupled,
          ! QnCoupled, QCoupled to svZeroD
          ! Run svZeroD
@@ -242,6 +366,7 @@ c     Get Density
 !           END IF
 !        END DO
 !        CLOSE(1)
+
       END IF
       
       i = MAXSURF + 1
@@ -253,6 +378,150 @@ c     Get Density
       
       RETURN
       END SUBROUTINE calcsvZeroD
+
+!> Main subroutine for calculating the surface pressure 
+!! derivative with respect to flow rate
+
+      SUBROUTINE calcsvZeroDBCDerivative
+       
+      USE GeneralBC
+      INCLUDE "global.h"
+      INCLUDE "mpif.h"
+      INCLUDE "common_blocks/workfc.h"
+      INCLUDE "common_blocks/inpdat.h"
+      INCLUDE "common_blocks/nomodule.h"
+
+      INTEGER MPIstat(MPI_STATUS_SIZE)
+      REAL*8 diff, PBase(numCoupledSrfs), garbage
+      REAL*8, PARAMETER :: absTol = 1D-8, relTol = 1D-5
+      INTEGER ierr,i,j
+      INTEGER error_code
+
+      REAL*8 :: params(2), times(2)
+
+      IF (numNeumannSrfs .EQ. 0) RETURN
+      
+      PDerFlag = .FALSE.
+      !i0 = numDirichletSrfs
+
+      diff = SUM(ABS(QCoupled(numDirichletSrfs+1:numCoupledSrfs)))
+     2   /REAL(numNeumannSrfs,8)
+
+      IF (diff*relTol .LT. absTol) THEN
+         diff = absTol
+      ELSE
+         diff = diff*relTol
+      END IF
+
+      IF (myrank .EQ. master) THEN
+         IF (svZeroDTime > 0.0D0) THEN
+            ! Set initial condition from previous state
+            lpn_interface_update_state(model_id, last_state_y,
+     &                                        last_state_ydot)
+         END IF
+
+         times = (/svZeroDTime, svZeroDTime+Delt(1)/)
+         DO j = numDirichletSrfs, numCoupledSrfs
+            ! Update pressure and flow in the zeroD model
+            DO i=1, numCoupledSrfs
+               IF (i .LE. numDirichletSrfs) THEN
+                  params = (/PnCoupled(i), PCoupled(i)/)
+               ELSE
+                  IF (i .NE. j) THEN
+                     params = (/QnCoupled(i), QCoupled(i)/)
+                  ELSE
+                     params = (/QnCoupled(i), QCoupled(i) + diff/)
+                  END IF
+               END IF
+               CALL lpn_interface_update_block_params(model_id,
+     &                 TRIM(svzd_blk_names(i)),blk_name_len(i),
+     &                                          times,params,2)
+            END DO
+
+            ! Run zeroD simulation
+            CALL lpn_interface_run_simulation(model_id, svZeroDTime, 
+     &                         lpn_times, lpn_solutions, error_code)
+
+            ! Extract pressure and flow from zeroD solution
+            lpn_state_y = lpn_solutions((num_output_steps-1)*system_size
+     &                                   :num_output_steps*system_size)
+            DO i=1, numCoupledSrfs
+               IF (i > numDirichletSrfs) THEN
+                  IF (i .NE. j) THEN
+                     IF (j .EQ. numDirichletSrfs) THEN
+                        PBase(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
+                     END IF
+                  ELSE
+                     PDer(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
+                     PDer(i) = (PDer(i) - PBase(i))/diff
+                  ENDIF
+               END IF
+            END DO
+         END DO
+
+!        IF (svzerodFlag .EQ. 'L') THEN !Last iteration
+!           ! Save state and update time only after last iteration
+!           CALL lpn_interface_return_ydot_(model_id,
+!    &                               last_state_ydot)
+!           last_state_y = lpn_state_y
+!           ! Keep track of current time
+!           svZeroDTime = svZeroDTime + Delt(1)
+!        END IF
+
+!        DO j=i0, numCoupledSrfs
+!           OPEN (1, FILE='GenBC.int', STATUS='UNKNOWN', 
+!    2         FORM='UNFORMATTED')
+!           WRITE (1) 'D'
+!           WRITE (1) Delt(1)
+!           WRITE (1) numDirichletSrfs
+!           WRITE (1) numNeumannSrfs
+!           DO i=1, numCoupledSrfs
+!              IF (i .LE. i0) THEN
+!                 WRITE (1) PnCoupled(i), PCoupled(i)
+!              ELSE
+!                 IF (i .NE. j) THEN
+!                    WRITE (1) QnCoupled(i), QCoupled(i)
+!                 ELSE
+!                    WRITE (1) QnCoupled(i), QCoupled(i) + diff
+!                 END IF
+!              END IF
+!           END DO
+!           CLOSE (1)
+!           
+!           IF (iGenFromFile .EQ. 1) THEN
+!              CALL system('./GenBC')
+!           ELSE
+!              CALL system('GenBC')
+!           END IF
+
+!           OPEN (1,FILE='GenBC.int',STATUS='OLD', FORM='UNFORMATTED')
+!           DO i=1, numCoupledSrfs
+!              IF (i .LE. i0) THEN
+!                 READ (1) garbage
+!              ELSE
+!                 IF (i .NE. j) THEN
+!                    IF (j .EQ. i0) THEN
+!                       READ (1) PBase(i)
+!                    ELSE
+!                       READ (1) garbage
+!                    END IF
+!                 ELSE
+!                    READ (1) PDer(i)
+!                    PDer(i) = (PDer(i) - PBase(i))/diff
+!                 END IF
+!              END IF
+!           END DO
+!           CLOSE(1)
+!        END DO
+      END IF
+
+      i = MAXSURF + 1
+      CALL MPI_BCAST(PDer, i, MPI_DOUBLE_PRECISION, master,
+     2   MPI_COMM_WORLD, ierr)
+
+      RETURN
+      END SUBROUTINE calcsvZeroDBCDerivative
+
 
 
 !> Writting results to the disk
@@ -287,16 +556,16 @@ c     SET FORMATS
       DO i=1, nParam
          INQUIRE(FILE=TRIM(fileNames(i)), EXIST=ierr)
          IF (ierr) THEN
-            OPEN (1, FILE=TRIM(fileNames(i)), STATUS='OLD', 
+            OPEN (113, FILE=TRIM(fileNames(i)), STATUS='OLD', 
      2         ACCESS='APPEND')
 
-            WRITE (1,fmt=myFMT1) R(i,:)
-            CLOSE (1)
+            WRITE (113,fmt=myFMT1) R(i,:)
+            CLOSE (113)
          ELSE
-            OPEN (1, FILE=TRIM(fileNames(i)), STATUS='NEW')
-            WRITE (1,fmt=myFMT2) surfID
-            WRITE (1,fmt=myFMT1) R(i,:)
-            CLOSE (1)
+            OPEN (113, FILE=TRIM(fileNames(i)), STATUS='NEW')
+            WRITE (113,fmt=myFMT2) surfID
+            WRITE (113,fmt=myFMT1) R(i,:)
+            CLOSE (113)
          END IF
       END DO
 
