@@ -49,6 +49,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
       MODULE svZeroD
 
+      REAL*8, PARAMETER :: pConv = 1333.22
       INTEGER numCoupledSrfs
       INTEGER, ALLOCATABLE :: nsrflistCoupled(:), ptrDirichlet(:)
 

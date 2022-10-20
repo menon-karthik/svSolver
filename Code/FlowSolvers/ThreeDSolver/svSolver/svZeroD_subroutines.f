@@ -291,9 +291,9 @@ c     Get Density
             ! Update pressure and flow in the zeroD model
             DO i=1, numCoupledSrfs
                IF (i .LE. numDirichletSrfs) THEN
-                  params = (/PnCoupled(i), PCoupled(i)/)
+                  params = (/ PnCoupled(i)/pConv, PCoupled(i)/pConv /)
                ELSE
-                  params = (/QnCoupled(i), QCoupled(i)/)
+                  params = (/ QnCoupled(i), QCoupled(i) /)
                END IF
                CALL lpn_interface_update_block_params(model_id,
      &            TRIM(svzd_blk_names(i)),svzd_blk_name_len(i),
@@ -311,7 +311,7 @@ c     Get Density
                IF (i .LE. numDirichletSrfs) THEN
                   QCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+1))
                ELSE
-                  PCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
+                  PCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+2))*pConv
                END IF
             END DO
 
@@ -426,12 +426,12 @@ c     Get Density
             ! Update pressure and flow in the zeroD model
             DO i=1, numCoupledSrfs
                IF (i .LE. numDirichletSrfs) THEN
-                  params = (/PnCoupled(i), PCoupled(i)/)
+                  params = (/ PnCoupled(i)/pConv, PCoupled(i)/pConv /)
                ELSE
                   IF (i .NE. j) THEN
-                     params = (/QnCoupled(i), QCoupled(i)/)
+                     params = ( /QnCoupled(i), QCoupled(i) /)
                   ELSE
-                     params = (/QnCoupled(i), QCoupled(i) + diff/)
+                     params = (/ QnCoupled(i), QCoupled(i) + diff /)
                   END IF
                END IF
                CALL lpn_interface_update_block_params(model_id,
@@ -450,10 +450,10 @@ c     Get Density
                IF (i > numDirichletSrfs) THEN
                   IF (i .NE. j) THEN
                      IF (j .EQ. numDirichletSrfs) THEN
-                        PBase(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
+                        PBase(i) = lpn_state_y(sol_IDs(2*(i-1)+2))*pConv
                      END IF
                   ELSE
-                     PDer(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
+                     PDer(i) = lpn_state_y(sol_IDs(2*(i-1)+2))*pConv
                      PDer(i) = (PDer(i) - PBase(i))/diff
                   ENDIF
                END IF
