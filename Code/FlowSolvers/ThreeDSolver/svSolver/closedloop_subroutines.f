@@ -48,6 +48,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  
       SUBROUTINE initGenBC
 
+      USE ClosedLoop
       USE GeneralBC
       INCLUDE "global.h"
       INCLUDE "mpif.h"
@@ -61,14 +62,14 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
       ALLOCATE(nsrflistCoupled(0:MAXSURF), ECoupled(0:MAXSURF),
      2   QCoupled(0:MAXSURF), QnCoupled(0:MAXSURF), ACoupled(0:MAXSURF),
-     2   PCoupled(0:MAXSURF), PnCoupled(0:MAXSURF), PGenDer(0:MAXSURF))
+     2   PCoupled(0:MAXSURF), PnCoupled(0:MAXSURF), PDer(0:MAXSURF))
 
       IF (ipvsq .GE. 2) THEN
-         PGenDerFlag = .TRUE.
+         PDerFlag = .TRUE.
       ELSE
-         PGenDerFlag = .FALSE.
+         PDerFlag = .FALSE.
       END IF
-      PGenDer = 0D0     
+      PDer = 0D0     
 
       nsrflistCoupled = nsrflistDirichlet
       nsrflistCoupled(numDirichletSrfs+1:numCoupledSrfs) = 
@@ -134,6 +135,7 @@ c       CHECK AREA
 
       SUBROUTINE calcGenBC (y, yold)
        
+      USE ClosedLoop
       USE GeneralBC
       INCLUDE "global.h"
       INCLUDE "mpif.h"
@@ -180,14 +182,16 @@ c     Get Density
       END DO
 
       IF (myrank .EQ. master) THEN
-         IF (GenFlag .EQ. 'L') THEN
+         !IF (GenFlag .EQ. 'L') THEN
+         IF (BCFlag .EQ. 'L') THEN
             i = numCoupledSrfs
             CALL printGen (i, nsrflistCoupled(1:i), QCoupled(1:i), 
      2         PCoupled(1:i), ECoupled(1:i))
          END IF
 
          OPEN (1,FILE='GenBC.int', STATUS='UNKNOWN', FORM='UNFORMATTED')
-         WRITE (1) GenFlag
+         !WRITE (1) GenFlag
+         WRITE (1) BCFlag
          WRITE (1) Delt(1)
          WRITE (1) numDirichletSrfs
          WRITE (1) numNeumannSrfs
@@ -234,6 +238,7 @@ c        EXTERNAL CALL TO GENBC
 
       SUBROUTINE calcGenBCDerivative
        
+      USE ClosedLoop
       USE GeneralBC
       INCLUDE "global.h"
       INCLUDE "mpif.h"
@@ -248,7 +253,7 @@ c        EXTERNAL CALL TO GENBC
 
       IF (numNeumannSrfs .EQ. 0) RETURN
       
-      PGenDerFlag = .FALSE.
+      PDerFlag = .FALSE.
       i0 = numDirichletSrfs
 
       diff = SUM(ABS(QCoupled(i0+1:numCoupledSrfs)))
@@ -299,8 +304,8 @@ c        EXTERNAL CALL TO GENBC
                         READ (1) garbage
                      END IF
                   ELSE
-                     READ (1) PGenDer(i)
-                     PGenDer(i) = (PGenDer(i) - PBase(i))/diff
+                     READ (1) PDer(i)
+                     PDer(i) = (PDer(i) - PBase(i))/diff
                   END IF
                END IF
             END DO
@@ -309,7 +314,7 @@ c        EXTERNAL CALL TO GENBC
       END IF
 
       i = MAXSURF + 1
-      CALL MPI_BCAST(PGenDer, i, MPI_DOUBLE_PRECISION, master,
+      CALL MPI_BCAST(PDer, i, MPI_DOUBLE_PRECISION, master,
      2   MPI_COMM_WORLD, ierr)
 
       RETURN

@@ -48,6 +48,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  
       SUBROUTINE initSvZeroD
 
+      USE ClosedLoop
       USE svZeroD
       INCLUDE "global.h"
       INCLUDE "mpif.h"
@@ -146,25 +147,28 @@ c       CHECK AREA
      &           TRIM(svzerod_file),LEN(TRIM(svzerod_file)),
      &               model_id,num_output_steps,system_size)
 
-        CALL lpn_interface_set_external_step_size(model_id,Delt(1))
+! Block removed for testing (START)
+!       CALL lpn_interface_set_external_step_size(model_id,Delt(1))
 
-        ! Allocate variables for svZeroD solution
-        ALLOCATE(lpn_times(0:num_output_steps))
-        ALLOCATE(lpn_solutions(0:num_output_steps*system_size))
-        ALLOCATE(lpn_state_y(0:system_size))
-        ALLOCATE(last_state_y(0:system_size))
-        ALLOCATE(last_state_ydot(0:system_size))
-        svZeroDTime = 0.0D0
+!       ! Allocate variables for svZeroD solution
+!       ALLOCATE(lpn_times(0:num_output_steps))
+!       ALLOCATE(lpn_solutions(0:num_output_steps*system_size))
+!       ALLOCATE(lpn_state_y(0:system_size))
+!       ALLOCATE(last_state_y(0:system_size))
+!       ALLOCATE(last_state_ydot(0:system_size))
+!       svZeroDTime = 0.0D0
 
-        ! Save IDs of relevant variables in the solution vector
-        ALLOCATE(sol_IDs(2*numCoupledSrfs))
-        DO i = 1, numCoupledSrfs
-          CALL lpn_interface_get_variable_ids(model_id,
-     &                         TRIM(svzd_blk_names(i)),
-     &                        svzd_blk_name_len(i),ids)
-          sol_IDs(2*(i-1)+1) = ids(0)
-          sol_IDs(2*(i-1)+2) = ids(1)
-        END DO
+!       ! Save IDs of relevant variables in the solution vector
+!       ALLOCATE(sol_IDs(2*numCoupledSrfs))
+!       DO i = 1, numCoupledSrfs
+!         CALL lpn_interface_get_variable_ids(model_id,
+!    &                         TRIM(svzd_blk_names(i)),
+!    &                        svzd_blk_name_len(i),ids)
+!         sol_IDs(2*(i-1)+1) = ids(0)
+!         sol_IDs(2*(i-1)+2) = ids(1)
+!       END DO
+! Block removed for testing (END)
+      END IF
 
         !TODO
         ! Define library path in modules probably
@@ -177,44 +181,8 @@ c       CHECK AREA
         ! Save block names in correct order (for parameter updates) and
         ! position of relevant variables in state vector (for return)
         !TODO
-
-!        IF (iGenFromFile .EQ. 1) THEN
-!           INQUIRE(FILE='GenBC',EXIST=ierr)
-!           IF (.NOT.ierr) THEN
-!              INQUIRE(FILE='../GenBC',EXIST=ierr)
-!              IF (ierr) THEN
-!                 CALL system('cp ../GenBC ./')
-!              ELSE
-!                 PRINT *, 'ERROR: No executable GenBC has been found'
-!                 PRINT *, 'Please, make sure that you had this', 
-!    2               ' executable file inside runnig directory'
-!                 STOP
-!              END IF
-!           END IF
-!        END IF
-
-!        INQUIRE(FILE='InitialData',EXIST=ierr)
-!        IF (ierr) THEN
-!           PRINT *, ''
-!           PRINT *, 'NOTE: Initializing General BC form previous simulation'
-!           PRINT *, ''
-!        ELSE
-!           INQUIRE(FILE='../InitialData',EXIST=ierr)
-!           IF (ierr) THEN
-!              CALL system('cp ../InitialData ./')
-!              PRINT *, ''
-!              PRINT *,'NOTE: General BC has been initialized from provided',
-!    2            ' file'
-!              PRINT *, ''
-!           ELSE
-!              PRINT *, ''
-!              PRINT *, 'NOTE: Self GenBC initializiation'
-!              PRINT *, ''
-!           END IF
-!        END IF
-      END IF
-
       RETURN
+      
       END SUBROUTINE initSvZeroD
 
 
@@ -223,6 +191,7 @@ c       CHECK AREA
 
       SUBROUTINE calcSvZeroD (y, yold)
        
+      USE ClosedLoop
       USE svZeroD
       INCLUDE "global.h"
       INCLUDE "mpif.h"
@@ -272,13 +241,13 @@ c     Get Density
       END DO
 
       IF (myrank .EQ. master) THEN
-         IF (svzerodFlag .EQ. 'L') THEN !Last iteration
+         IF (BCFlag .EQ. 'L') THEN !Last iteration
             i = numCoupledSrfs
             CALL printSvZeroD (i, nsrflistCoupled(1:i), QCoupled(1:i), 
      2         PCoupled(1:i), ECoupled(1:i))
          END IF
 
-         IF (svzerodFlag .NE. 'I') THEN
+         IF (BCFlag .NE. 'I') THEN
            
             IF (svZeroDTime > 0.0D0) THEN
                ! Set initial condition from previous state
@@ -315,9 +284,9 @@ c     Get Density
                END IF
             END DO
 
-            IF (svzerodFlag .EQ. 'L') THEN !Last iteration
+            IF (BCFlag .EQ. 'L') THEN !Last iteration
                ! Save state and update time only after last iteration
-               CALL lpn_interface_return_ydot_(model_id,
+               CALL lpn_interface_return_ydot(model_id,
      &                                  last_state_ydot)
                last_state_y = lpn_state_y
                ! Keep track of current time
@@ -336,38 +305,6 @@ c     Get Density
          ! lpn_interface)
          ! TODO
 
-!        OPEN (1,FILE='GenBC.int', STATUS='UNKNOWN', FORM='UNFORMATTED')
-!        WRITE (1) GenFlag
-!        WRITE (1) Delt(1)
-!        WRITE (1) numDirichletSrfs
-!        WRITE (1) numNeumannSrfs
-!        DO i=1, numCoupledSrfs
-!           IF (i .LE. numDirichletSrfs) THEN
-!              WRITE (1) PnCoupled(i), PCoupled(i)
-!           ELSE
-!              WRITE (1) QnCoupled(i), QCoupled(i)
-!           END IF
-!        END DO
-!        CLOSE (1)
-
-!        
-!        EXTERNAL CALL TO GENBC
-!        IF (iGenFromFile .EQ. 1) THEN            
-!           CALL system('./GenBC')
-!        ELSE
-!           CALL system('GenBC')
-!        END IF
-
-!        OPEN (1,FILE='GenBC.int',STATUS='OLD', FORM='UNFORMATTED')
-!        DO i=1, numCoupledSrfs
-!           IF (i .LE. numDirichletSrfs) THEN
-!              READ (1) QCoupled(i)
-!           ELSE
-!              READ (1) PCoupled(i)
-!           END IF
-!        END DO
-!        CLOSE(1)
-
       END IF
       
       i = MAXSURF + 1
@@ -385,6 +322,7 @@ c     Get Density
 
       SUBROUTINE calcsvZeroDBCDerivative
        
+      USE ClosedLoop
       USE svZeroD
       INCLUDE "global.h"
       INCLUDE "mpif.h"
@@ -462,7 +400,7 @@ c     Get Density
 
 !        IF (svzerodFlag .EQ. 'L') THEN !Last iteration
 !           ! Save state and update time only after last iteration
-!           CALL lpn_interface_return_ydot_(model_id,
+!           CALL lpn_interface_return_ydot(model_id,
 !    &                               last_state_ydot)
 !           last_state_y = lpn_state_y
 !           ! Keep track of current time

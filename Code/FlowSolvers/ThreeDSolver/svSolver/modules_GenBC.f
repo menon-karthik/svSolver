@@ -47,18 +47,9 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 !> This module conveys parameters for General Boundary condition. Below 
 !! Defined variables are used to construct LHS and RHS of the solver. 
 
-      MODULE svZeroD
-
-      REAL*8, PARAMETER :: pConv = 1333.22
+      MODULE GeneralBC
       
-      CHARACTER(len=50), ALLOCATABLE :: svzd_blk_names(:)
-      INTEGER, ALLOCATABLE :: svzd_blk_ids(:), svzd_blk_name_len(:)
-      INTEGER model_id, num_output_steps, system_size
-      REAL*8, ALLOCATABLE :: lpn_solutions(:), lpn_times(:)
-      REAL*8, ALLOCATABLE :: lpn_state_y(:)
-      REAL*8, ALLOCATABLE :: last_state_y(:), last_state_ydot(:)
-      INTEGER, ALLOCATABLE :: sol_IDs(:)
-      REAL*8 svZeroDTime
+      CHARACTER GenFlag
 
       END MODULE
 

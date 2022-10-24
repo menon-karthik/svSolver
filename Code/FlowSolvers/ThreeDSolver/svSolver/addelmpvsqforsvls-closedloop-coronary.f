@@ -95,7 +95,7 @@ c
 #endif
       use LagrangeMultipliers !brings in the current part of coef for Lagrange Multipliers
 #if (VER_CLOSEDLOOP == 1)
-      USE GeneralBC ! Brings in PGen
+      USE ClosedLoop ! Brings in PGen
 #endif
 c
       include "global.h"
@@ -121,7 +121,7 @@ c     INTENT WAS ADDED IN MAHDI VERSION - DES
 #if (VER_CLOSEDLOOP == 1)
          DO k = numDirichletSrfs+1, numCoupledSrfs
             faIn = faIn + 1
-            faceRes(faIn) = PGenDer(k)
+            faceRes(faIn) = PDer(k)
          END DO
 #endif
          DO k = 1, numImpSrfs

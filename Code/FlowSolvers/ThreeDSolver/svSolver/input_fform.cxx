@@ -612,7 +612,16 @@ int input_fform(char inpfname[])
       if ( strvalue == "True")
          nomodule.iGenFromFile = 1;
       else
-       nomodule.iGenFromFile = 0;
+         nomodule.iGenFromFile = 0;
+      
+      nomodule.svZeroDInitialization = inp.GetValue("Number of Timesteps for svZeroD Initialization","0",false,false);
+      strvalue=(string)inp.GetValue("Use svZeroD for Boundary Conditions","False",false,false);
+      if ( strvalue == "True")
+         nomodule.iSvZeroD = 1;
+      else
+       nomodule.iSvZeroD = 0;
+      std::cout<<nomodule.iSvZeroD<<std::endl;
+      
 
       if(nomodule.numDirichletSrfs=inp.GetValue("Number of Dirichlet Surfaces","0",false,false)){
           ivec = inp.GetValue("List of Dirichlet Surfaces","",true,true);

@@ -93,7 +93,8 @@ c
 #endif
       use LagrangeMultipliers !brings in the current part of coef for Lagrange Multipliers
 #if (VER_CLOSEDLOOP == 1)
-      USE GeneralBC ! Brings in PGen
+      !USE GeneralBC ! Brings in PGen
+      USE ClosedLoop ! Brings in PGen
 #endif
 c
       include "global.h"
@@ -138,7 +139,7 @@ c
             p = sign*PCoupled
          ELSE
             CALL GetFlowQ (p, y, nsrflistCoupled, numCoupledSrfs)
-            p = sign*p*PGenDer
+            p = sign*p*PDer
          END IF
          DO i = 1,nshg
             DO k = numDirichletSrfs+1, numCoupledSrfs

@@ -39,13 +39,15 @@ extern "C" void lpn_interface_add_model_(const char* lpn_library_name, int* lib_
   std::cout << "[lpn_interface_init_] Loaded library." << std::endl;
 
   // Initialize model
-//std::cout<<"lpn_json_file: "<<std::string(lpn_json_file)<<std::endl;
+  //std::cout<<"lpn_json_file: "<<std::string(lpn_json_file)<<std::endl;
 //std::string lpn_file(lpn_json_file,0,json_filename_len);
 //std::cout<<"lpn_json_file (test): "<<test<<std::endl;
 //lpn_json_file = "with_coronaries_ext.json";
 //std::cout<<"lpn_json_file: "<<std::string(lpn_json_file)<<std::endl;
 //interface->initialize(std::string(lpn_json_file));
   std::string lpn_file(lpn_json_file,0,*json_filename_len);
+  //std::cout<<"lpn_file_len: "<<*json_filename_len<<std::endl;
+  //std::cout<<"lpn_file: "<<std::string(lpn_file)<<std::endl;
   interface->initialize(std::string(lpn_file));
   *interface_id = interface->problem_id_;
   std::cout << "[lpn_interface_add_model_] interface->problem_id_:" <<interface->problem_id_<< std::endl;

@@ -499,6 +499,8 @@ extern "C" {
     int nsrflistNeumann[MAXSURF+1];
     int iGenInitialization;
     int iGenFromFile;
+    int svZeroDInitialization;
+    int iSvZeroD;
     int numDirichletSrfs;
     int nsrflistDirichlet[MAXSURF+1];
     //==================================

@@ -34,7 +34,6 @@ LPNSolverInterface::~LPNSolverInterface()
 void LPNSolverInterface::load_library(const std::string& interface_lib)
 {
   library_handle_ = dlopen(interface_lib.c_str(), RTLD_LAZY);
-  std::cout<<interface_lib<<std::endl;
 
   if (!library_handle_) {
     std::cerr << "Error loading shared library '" << interface_lib << "'  with error: " << dlerror() << std::endl;

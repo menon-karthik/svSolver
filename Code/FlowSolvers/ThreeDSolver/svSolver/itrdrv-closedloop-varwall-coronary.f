@@ -114,7 +114,9 @@ c
       use ResidualControl 
       
 #if(VER_CLOSEDLOOP == 1)
-      use GeneralBC
+      USE ClosedLoop
+      USE GeneralBC
+      USE svZeroD
 #endif
       use pointer_data
       
@@ -332,7 +334,11 @@ c
 #if(VER_CLOSEDLOOP == 1)
       numCoupledSrfs = numDirichletSrfs + numNeumannSrfs
       IF (numCoupledSrfs .GT. 0) THEN
-         CALL initGenBC
+         IF (iSvZeroD == 0) THEN
+            CALL initGenBC
+         ELSE
+            CALL initSvZeroD
+         END IF
 
          IF (numDirichletSrfs .GT. 0) THEN
 !     Construction Dirichlet pointer            
@@ -360,8 +366,14 @@ c
             END DO
 
 !     Assigning/adjusting the Dirichlet nodes velocities
-            GenFlag = 'I'
-            CALL calcGenBC (y, yold)
+            BCFlag = 'I'
+            IF (iSvZeroD == 0) THEN
+               !GenFlag = 'I'
+               CALL calcGenBC (y, yold)
+            ELSE
+               CALL calcsvZeroD (y, yold)
+            END IF
+
             DO i=1,itvn
                j = ptrDirichlet(i)
                IF (j .NE. 0) THEN
@@ -709,14 +721,21 @@ c
 
 #if(VER_CLOSEDLOOP == 1)
                      IF (numCoupledSrfs .GT. 0 ) THEN
-                        GenFlag = 'T'
+                        !GenFlag = 'T'
+                        BCFlag = 'T'
                         IF (lstep .LT. iGenInitialization) THEN
-                          GenFlag = 'I'
+                          BCFlag = 'I'
                         ENDIF
-                        CALL calcGenBC (y, yold)
-                      
-                        IF (PGenDerFlag .OR. ipvsq.EQ.3) THEN
-                           CALL calcGenBCDerivative
+                        IF (iSvZeroD == 0) THEN
+                           CALL calcGenBC (y, yold)
+                           IF (PDerFlag .OR. ipvsq.EQ.3) THEN
+                              CALL calcGenBCDerivative
+                           END IF
+                        ELSE
+                           CALL calcsvZeroD (y, yold)
+                           IF (PDerFlag .OR. ipvsq.EQ.3) THEN
+                              CALL calcsvZeroDBCDerivative
+                           END IF
                         END IF
 
                         IF (numDirichletSrfs .GT. 0) THEN
@@ -807,9 +826,14 @@ c
 c           Updating the InitialData
 
             IF (numCoupledSrfs .GT. 0) THEN
-               GenFlag = 'L'
+               BCFlag = 'L'
                IF (lstep .GE. iGenInitialization) THEN
-                  CALL calcGenBC (y, yold)
+                  !CALL calcGenBC (y, yold)
+                  IF (iSvZeroD == 0) THEN
+                     CALL calcGenBC (y, yold)
+                  ELSE
+                     CALL calcsvZeroD (y, yold)
+                  END IF
                END IF
             END IF
 #endif

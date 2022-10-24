@@ -53,7 +53,8 @@ if(SV_USE_CORONARY)
 endif()
 
 if (SV_USE_CLOSEDLOOP)
-  set(FSRCS ${FSRCS} modules-closedloop.f)
+  set(FSRCS ${FSRCS} modules_closedloop.f)
+  set(FSRCS ${FSRCS} modules_GenBC.f)
   set(FSRCS ${FSRCS} modules_svZeroD.f)
 endif()
 
