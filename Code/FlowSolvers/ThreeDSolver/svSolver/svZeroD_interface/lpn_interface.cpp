@@ -83,35 +83,35 @@ extern "C" void lpn_interface_get_variable_ids_(const int* interface_id, char* b
   auto interface = interfaces[*interface_id];
   std::vector<std::string> variable_names;
   variable_names = interface->variable_names_;
-  for (int i = 0; i < variable_names.size(); i++) {
-    std::cout<<"[lpn_interface_get_variable_ids] Variable name: "<<variable_names[i]<<" , index: "<< i<<std::endl;
-  }
+//for (int i = 0; i < variable_names.size(); i++) {
+//  std::cout<<"[lpn_interface_get_variable_ids] Variable name: "<<variable_names[i]<<" , index: "<< i<<std::endl;
+//}
   std::vector<int> IDs;
   std::string block_name_cpp(block_name,0,*block_name_len);
   interface->get_block_node_IDs(std::string(block_name_cpp), IDs);
   // IDs stores info in the following format:
   // {num inlet nodes, inlet flow[0], inlet pressure[0],..., num outlet nodes, outlet flow[0], outlet pressure[0],...}
-  std::cout<<"IDs: ";
-  for (int i = 0;i<IDs.size();i++) {
-    std::cout<<IDs[i]<<", ";
-  }
-  std::cout<<std::endl;
+//std::cout<<"IDs: ";
+//for (int i = 0;i<IDs.size();i++) {
+//  std::cout<<IDs[i]<<", ";
+//}
+//std::cout<<std::endl;
   int num_inlet_nodes = IDs[0];
   int num_outlet_nodes = IDs[1+num_inlet_nodes*2];
-  std::cout<<"Inlet and outlet nodes: "<<num_inlet_nodes<<", "<<num_outlet_nodes<<std::endl;
+//std::cout<<"Inlet and outlet nodes: "<<num_inlet_nodes<<", "<<num_outlet_nodes<<std::endl;
   if ((num_inlet_nodes == 0) && (num_outlet_nodes = 1)) {
-    std::cout<<"Only outlet nodes"<<std::endl;
+    //std::cout<<"Only outlet nodes"<<std::endl;
     blk_ids[0] = IDs[1+num_inlet_nodes*2+1]; // Outlet flow
     blk_ids[1] = IDs[1+num_inlet_nodes*2+2]; // Outlet pressure
   } else if ((num_inlet_nodes == 1) && (num_outlet_nodes == 0)) {
-    std::cout<<"Only inlet nodes"<<std::endl;
+    //std::cout<<"Only inlet nodes"<<std::endl;
     blk_ids[0] = IDs[1]; // Inlet flow
     blk_ids[1] = IDs[2]; // Inlet pressure
   } else {
     std::runtime_error("ERROR: [lpn_interface_get_variable_ids] Not a flow/pressure block.");
   }
-  std::cout<<"blk_ids[0]: "<<blk_ids[0]<<std::endl;
-  std::cout<<"blk_ids[1]: "<<blk_ids[1]<<std::endl;
+//std::cout<<"blk_ids[0]: "<<blk_ids[0]<<std::endl;
+//std::cout<<"blk_ids[1]: "<<blk_ids[1]<<std::endl;
 
 //std::cout<<"[lpn_interface_get_variable_ids] Block name: "<<block_name<<std::endl;
 //for (int i = 0; i < num_inlet_nodes; i++) {
@@ -166,6 +166,21 @@ extern "C" void lpn_interface_update_state_(const int* interface_id, double* y, 
 }
 
 //----------------------------
+// lpn_interface_return_y
+//----------------------------
+//
+extern "C" void lpn_interface_return_y_(const int* interface_id, double* y)
+{
+  auto interface = interfaces[*interface_id];
+  std::vector<double> state_y(interface->system_size_);
+  interface->return_y(state_y);
+  for (int i = 0; i < interface->system_size_; i++) {
+    y[i] = state_y[i];
+    //std::cout<<"[lpn_interface_return_ydot] "<<state_ydot[i]<<std::endl;
+  }
+}
+
+//----------------------------
 // lpn_interface_return_ydot
 //----------------------------
 //
@@ -186,7 +201,7 @@ extern "C" void lpn_interface_return_ydot_(const int* interface_id, double* ydot
 //
 extern "C" void lpn_interface_update_block_params_(const int* interface_id, char* block_name, int* block_name_len, double* time, double* params, int* num_time_pts)
 {
-  std::cout << "lpn_interface_update_block_params START" << std::endl;
+  //std::cout << "lpn_interface_update_block_params START" << std::endl;
   auto interface = interfaces[*interface_id];
   //std::cout << "lpn_interface_update_block_params 1" << std::endl;
   int param_len = *num_time_pts;
@@ -212,7 +227,7 @@ extern "C" void lpn_interface_update_block_params_(const int* interface_id, char
   //std::cout << "lpn_interface_update_block_params 3" << std::endl;
   std::string block_name_cpp(block_name,0,*block_name_len);
   interface->update_block_params(std::string(block_name_cpp), new_params);
-  std::cout << "lpn_interface_update_block_params END" << std::endl;
+  //std::cout << "lpn_interface_update_block_params END" << std::endl;
 }
 
 //----------------------------

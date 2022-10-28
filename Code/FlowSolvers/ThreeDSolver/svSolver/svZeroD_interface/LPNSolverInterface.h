@@ -26,6 +26,7 @@ class LPNSolverInterface
     void read_block_params(std::string block_name, std::vector<double>& block_params);
     void get_block_node_IDs(std::string block_name, std::vector<int>& IDs);
     void update_state(std::vector<double> state_y, std::vector<double> state_ydot);
+    void return_y(std::vector<double>& y);
     void return_ydot(std::vector<double>& ydot);
     void set_external_step_size(double step_size);
 
@@ -51,6 +52,9 @@ class LPNSolverInterface
     
     std::string lpn_update_state_name_;
     void (*lpn_update_state_)(const int, std::vector<double>, std::vector<double>);
+    
+    std::string lpn_return_y_name_;
+    void (*lpn_return_y_)(const int, std::vector<double>&);
     
     std::string lpn_return_ydot_name_;
     void (*lpn_return_ydot_)(const int, std::vector<double>&);

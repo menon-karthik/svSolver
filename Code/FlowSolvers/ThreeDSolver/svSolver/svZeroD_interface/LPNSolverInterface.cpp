@@ -18,6 +18,7 @@ LPNSolverInterface::LPNSolverInterface()
   lpn_get_block_node_IDs_name_ = "get_block_node_IDs";
   lpn_update_state_name_ = "update_state";
   lpn_return_ydot_name_ = "return_ydot";
+  lpn_return_y_name_ = "return_y";
   lpn_set_external_step_size_name_ = "set_external_step_size";
 }
 
@@ -92,6 +93,14 @@ void LPNSolverInterface::load_library(const std::string& interface_lib)
   *(void**)(&lpn_update_state_) = dlsym(library_handle_, "update_state");
   if (!lpn_update_state_) {
     std::cerr << "Error loading function 'lpn_update_state' with error: " << dlerror() << std::endl;
+    dlclose(library_handle_);
+    return;
+  }
+  
+  // Get a pointer to the svzero 'return_y' function.
+  *(void**)(&lpn_return_y_) = dlsym(library_handle_, "return_y");
+  if (!lpn_return_y_) {
+    std::cerr << "Error loading function 'lpn_return_y' with error: " << dlerror() << std::endl;
     dlclose(library_handle_);
     return;
   }
@@ -198,7 +207,15 @@ void LPNSolverInterface::update_state(std::vector<double> state_y, std::vector<d
 }
 
 //----------------
-// get_variable_ids
+// return_y
+//----------------
+void LPNSolverInterface::return_y(std::vector<double>& y)
+{
+  lpn_return_y_(problem_id_, y);
+}
+
+//----------------
+// return_ydot
 //----------------
 void LPNSolverInterface::return_ydot(std::vector<double>& ydot)
 {

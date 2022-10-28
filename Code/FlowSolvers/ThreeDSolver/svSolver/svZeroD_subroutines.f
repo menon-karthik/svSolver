@@ -63,6 +63,8 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
       CHARACTER(len=160) svzerod_library, svzerod_file
       INTEGER :: ids(0:1)
       CHARACTER(len=50), ALLOCATABLE :: svzd_blk_names_unsrtd(:)
+      INTEGER :: init_flow_flag, init_press_flag
+      REAL*8 :: init_flow, init_press
       INTEGER i,j,found
 
       ALLOCATE(nsrflistCoupled(0:MAXSURF), ECoupled(0:MAXSURF),
@@ -122,6 +124,24 @@ c       CHECK AREA
         DO i = 1, numCoupledSrfs
           READ (113, *) svzd_blk_names_unsrtd(i), svzd_blk_ids(i)
         END DO
+        READ (113, *) ! Blank line
+
+        READ (113, *) ! Header
+        READ (113, *) init_flow_flag
+        READ (113, *) ! Blank line
+
+        READ (113, *) ! Header
+        READ (113, *) init_flow
+        READ (113, *) ! Blank line
+
+        READ (113, *) ! Header
+        READ (113, *) init_press_flag
+        READ (113, *) ! Blank line
+
+        READ (113, *) ! Header
+        READ (113, *) init_press
+        READ (113, *) ! Blank line
+
         CLOSE(113)
 
         ! Arrange svzd_blk_names in the same order as surface IDs in nsrflistCoupled
@@ -147,28 +167,43 @@ c       CHECK AREA
      &           TRIM(svzerod_file),LEN(TRIM(svzerod_file)),
      &               model_id,num_output_steps,system_size)
 
-! Block removed for testing (START)
-!       CALL lpn_interface_set_external_step_size(model_id,Delt(1))
+        CALL lpn_interface_set_external_step_size(model_id,Delt(1))
 
-!       ! Allocate variables for svZeroD solution
-!       ALLOCATE(lpn_times(0:num_output_steps))
-!       ALLOCATE(lpn_solutions(0:num_output_steps*system_size))
-!       ALLOCATE(lpn_state_y(0:system_size))
-!       ALLOCATE(last_state_y(0:system_size))
-!       ALLOCATE(last_state_ydot(0:system_size))
-!       svZeroDTime = 0.0D0
+        ! Allocate variables for svZeroD solution
+        ALLOCATE(lpn_times(0:num_output_steps))
+        ALLOCATE(lpn_solutions(0:num_output_steps*system_size))
+        ALLOCATE(lpn_state_y(0:system_size))
+        ALLOCATE(last_state_y(0:system_size))
+        ALLOCATE(last_state_ydot(0:system_size))
+        svZeroDTime = 0.0D0
+            
+        CALL lpn_interface_return_y(model_id,
+     &                              lpn_state_y)
+        CALL lpn_interface_return_ydot(model_id,
+     &                                last_state_ydot)
 
-!       ! Save IDs of relevant variables in the solution vector
-!       ALLOCATE(sol_IDs(2*numCoupledSrfs))
-!       DO i = 1, numCoupledSrfs
-!         CALL lpn_interface_get_variable_ids(model_id,
-!    &                         TRIM(svzd_blk_names(i)),
-!    &                        svzd_blk_name_len(i),ids)
-!         sol_IDs(2*(i-1)+1) = ids(0)
-!         sol_IDs(2*(i-1)+2) = ids(1)
-!       END DO
-! Block removed for testing (END)
-      END IF
+        ! Save IDs of relevant variables in the solution vector
+        ALLOCATE(sol_IDs(2*numCoupledSrfs))
+        DO i = 1, numCoupledSrfs
+          CALL lpn_interface_get_variable_ids(model_id,
+     &                         TRIM(svzd_blk_names(i)),
+     &                        svzd_blk_name_len(i),ids)
+          sol_IDs(2*(i-1)+1) = ids(0)
+          sol_IDs(2*(i-1)+2) = ids(1)
+        END DO
+            
+        ! Initialize lpn_state variables corresponding to external coupling blocks
+        DO i = 1, numCoupledSrfs
+          IF (init_flow_flag == 1) THEN
+            lpn_state_y(sol_IDs(2*(i-1)+1)) = init_flow
+          END IF
+          IF (init_press_flag == 1) THEN
+            lpn_state_y(sol_IDs(2*(i-1)+2)) = init_press
+          END IF
+        END DO
+        CALL lpn_interface_update_state(model_id, lpn_state_y,
+     &                                  last_state_ydot)
+      END IF ! myRank == master
 
         !TODO
         ! Define library path in modules probably
@@ -262,11 +297,11 @@ c     Get Density
                IF (i .LE. numDirichletSrfs) THEN
                   params = (/ PnCoupled(i)/pConv, PCoupled(i)/pConv /)
                ELSE
-                  params = (/ QnCoupled(i), QCoupled(i) /)
+                  params = (/ -QnCoupled(i), -QCoupled(i) /)
                END IF
                CALL lpn_interface_update_block_params(model_id,
-     &            TRIM(svzd_blk_names(i)),svzd_blk_name_len(i),
-     &                                          times,params,2)
+     &                    TRIM(svzd_blk_names(i)),svzd_blk_name_len(i),
+     &                                                  times,params,2)
             END DO
 
             ! Run zeroD simulation
@@ -292,8 +327,9 @@ c     Get Density
                ! Keep track of current time
                svZeroDTime = svZeroDTime + Delt(1)
             END IF
-         ENDIF
+         ENDIF !BCFlag .NE. 'I'
 
+      END IF ! myrank .EQ. master
 
          ! TODO
          ! Figure out initial condition
@@ -304,8 +340,6 @@ c     Get Density
          ! vector or from new function that returns this (in
          ! lpn_interface)
          ! TODO
-
-      END IF
       
       i = MAXSURF + 1
       CALL MPI_BCAST(QCoupled, i, MPI_DOUBLE_PRECISION, master,
