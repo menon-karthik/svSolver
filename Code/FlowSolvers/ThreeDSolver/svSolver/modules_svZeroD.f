@@ -57,6 +57,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
       REAL*8, ALLOCATABLE :: lpn_solutions(:), lpn_times(:)
       REAL*8, ALLOCATABLE :: lpn_state_y(:)
       REAL*8, ALLOCATABLE :: last_state_y(:), last_state_ydot(:)
+      REAL*8, ALLOCATABLE :: in_out_sign(:)
       INTEGER, ALLOCATABLE :: sol_IDs(:)
       REAL*8 svZeroDTime
 

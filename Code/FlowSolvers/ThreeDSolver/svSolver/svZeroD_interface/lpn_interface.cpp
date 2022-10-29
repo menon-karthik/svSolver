@@ -78,7 +78,7 @@ extern "C" void lpn_interface_set_external_step_size_(const int* interface_id, d
 // lpn_interface_get_variables_ids_
 //----------------------------
 //
-extern "C" void lpn_interface_get_variable_ids_(const int* interface_id, char* block_name, int* block_name_len, int* blk_ids)
+extern "C" void lpn_interface_get_variable_ids_(const int* interface_id, char* block_name, int* block_name_len, int* blk_ids, double* inlet_or_outlet)
 {
   auto interface = interfaces[*interface_id];
   std::vector<std::string> variable_names;
@@ -103,10 +103,12 @@ extern "C" void lpn_interface_get_variable_ids_(const int* interface_id, char* b
     //std::cout<<"Only outlet nodes"<<std::endl;
     blk_ids[0] = IDs[1+num_inlet_nodes*2+1]; // Outlet flow
     blk_ids[1] = IDs[1+num_inlet_nodes*2+2]; // Outlet pressure
+    *inlet_or_outlet = 1.0; // Signifies inlet to LPN
   } else if ((num_inlet_nodes == 1) && (num_outlet_nodes == 0)) {
     //std::cout<<"Only inlet nodes"<<std::endl;
     blk_ids[0] = IDs[1]; // Inlet flow
     blk_ids[1] = IDs[2]; // Inlet pressure
+    *inlet_or_outlet = -1.0; // Signifies outlet to LPN
   } else {
     std::runtime_error("ERROR: [lpn_interface_get_variable_ids] Not a flow/pressure block.");
   }

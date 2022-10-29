@@ -64,7 +64,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
       INTEGER :: ids(0:1)
       CHARACTER(len=50), ALLOCATABLE :: svzd_blk_names_unsrtd(:)
       INTEGER :: init_flow_flag, init_press_flag
-      REAL*8 :: init_flow, init_press
+      REAL*8 :: init_flow, init_press, in_out
       INTEGER i,j,found
 
       ALLOCATE(nsrflistCoupled(0:MAXSURF), ECoupled(0:MAXSURF),
@@ -184,12 +184,14 @@ c       CHECK AREA
 
         ! Save IDs of relevant variables in the solution vector
         ALLOCATE(sol_IDs(2*numCoupledSrfs))
+        ALLOCATE(in_out_sign(numCoupledSrfs))
         DO i = 1, numCoupledSrfs
           CALL lpn_interface_get_variable_ids(model_id,
-     &                         TRIM(svzd_blk_names(i)),
-     &                        svzd_blk_name_len(i),ids)
+                               TRIM(svzd_blk_names(i)),
+     &                         svzd_blk_name_len(i),ids,in_out)
           sol_IDs(2*(i-1)+1) = ids(0)
           sol_IDs(2*(i-1)+2) = ids(1)
+          in_out_sign(i) = in_out
         END DO
             
         ! Initialize lpn_state variables corresponding to external coupling blocks
@@ -297,7 +299,8 @@ c     Get Density
                IF (i .LE. numDirichletSrfs) THEN
                   params = (/ PnCoupled(i)/pConv, PCoupled(i)/pConv /)
                ELSE
-                  params = (/ -QnCoupled(i), -QCoupled(i) /)
+                  params = (/ in_out_sign(i)*QnCoupled(i), 
+     &                        in_out_sign(i)*QCoupled(i) /)
                END IF
                CALL lpn_interface_update_block_params(model_id,
      &                    TRIM(svzd_blk_names(i)),svzd_blk_name_len(i),
@@ -313,7 +316,8 @@ c     Get Density
      &                                   :num_output_steps*system_size)
             DO i=1, numCoupledSrfs
                IF (i .LE. numDirichletSrfs) THEN
-                  QCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+1))
+                  QCoupled(i) = in_out_sign(i)*
+                                lpn_state_y(sol_IDs(2*(i-1)+1))
                ELSE
                   PCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+2))*pConv
                END IF
@@ -401,9 +405,11 @@ c     Get Density
                   params = (/ PnCoupled(i)/pConv, PCoupled(i)/pConv /)
                ELSE
                   IF (i .NE. j) THEN
-                     params = ( /QnCoupled(i), QCoupled(i) /)
+                     params = ( / in_out_sign(i)*QnCoupled(i), 
+     &                            in_out_sign(i)*QCoupled(i) /)
                   ELSE
-                     params = (/ QnCoupled(i), QCoupled(i) + diff /)
+                     params = (/ in_out_sign(i)*QnCoupled(i), 
+     &                           in_out_sign(i)*(QCoupled(i) + diff)/)
                   END IF
                END IF
                CALL lpn_interface_update_block_params(model_id,
@@ -440,53 +446,7 @@ c     Get Density
 !           ! Keep track of current time
 !           svZeroDTime = svZeroDTime + Delt(1)
 !        END IF
-
-!        DO j=i0, numCoupledSrfs
-!           OPEN (1, FILE='GenBC.int', STATUS='UNKNOWN', 
-!    2         FORM='UNFORMATTED')
-!           WRITE (1) 'D'
-!           WRITE (1) Delt(1)
-!           WRITE (1) numDirichletSrfs
-!           WRITE (1) numNeumannSrfs
-!           DO i=1, numCoupledSrfs
-!              IF (i .LE. i0) THEN
-!                 WRITE (1) PnCoupled(i), PCoupled(i)
-!              ELSE
-!                 IF (i .NE. j) THEN
-!                    WRITE (1) QnCoupled(i), QCoupled(i)
-!                 ELSE
-!                    WRITE (1) QnCoupled(i), QCoupled(i) + diff
-!                 END IF
-!              END IF
-!           END DO
-!           CLOSE (1)
-!           
-!           IF (iGenFromFile .EQ. 1) THEN
-!              CALL system('./GenBC')
-!           ELSE
-!              CALL system('GenBC')
-!           END IF
-
-!           OPEN (1,FILE='GenBC.int',STATUS='OLD', FORM='UNFORMATTED')
-!           DO i=1, numCoupledSrfs
-!              IF (i .LE. i0) THEN
-!                 READ (1) garbage
-!              ELSE
-!                 IF (i .NE. j) THEN
-!                    IF (j .EQ. i0) THEN
-!                       READ (1) PBase(i)
-!                    ELSE
-!                       READ (1) garbage
-!                    END IF
-!                 ELSE
-!                    READ (1) PDer(i)
-!                    PDer(i) = (PDer(i) - PBase(i))/diff
-!                 END IF
-!              END IF
-!           END DO
-!           CLOSE(1)
-!        END DO
-      END IF
+      END IF ! myrank .EQ. master
 
       i = MAXSURF + 1
       CALL MPI_BCAST(PDer, i, MPI_DOUBLE_PRECISION, master,
