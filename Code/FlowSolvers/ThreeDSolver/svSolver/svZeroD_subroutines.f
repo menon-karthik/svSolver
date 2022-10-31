@@ -177,24 +177,23 @@ c       CHECK AREA
         ALLOCATE(last_state_ydot(0:system_size))
         svZeroDTime = 0.0D0
             
-        CALL lpn_interface_return_y(model_id,
-     &                              lpn_state_y)
-        CALL lpn_interface_return_ydot(model_id,
-     &                                last_state_ydot)
-
         ! Save IDs of relevant variables in the solution vector
         ALLOCATE(sol_IDs(2*numCoupledSrfs))
         ALLOCATE(in_out_sign(numCoupledSrfs))
         DO i = 1, numCoupledSrfs
           CALL lpn_interface_get_variable_ids(model_id,
-                               TRIM(svzd_blk_names(i)),
-     &                         svzd_blk_name_len(i),ids,in_out)
+     &                          TRIM(svzd_blk_names(i)),
+     &                          svzd_blk_name_len(i),ids,in_out)
           sol_IDs(2*(i-1)+1) = ids(0)
           sol_IDs(2*(i-1)+2) = ids(1)
           in_out_sign(i) = in_out
         END DO
             
         ! Initialize lpn_state variables corresponding to external coupling blocks
+        CALL lpn_interface_return_y(model_id,
+     &                              lpn_state_y)
+        CALL lpn_interface_return_ydot(model_id,
+     &                                last_state_ydot)
         DO i = 1, numCoupledSrfs
           IF (init_flow_flag == 1) THEN
             lpn_state_y(sol_IDs(2*(i-1)+1)) = init_flow
@@ -203,8 +202,9 @@ c       CHECK AREA
             lpn_state_y(sol_IDs(2*(i-1)+2)) = init_press
           END IF
         END DO
-        CALL lpn_interface_update_state(model_id, lpn_state_y,
-     &                                  last_state_ydot)
+        last_state_y = lpn_state_y
+!       CALL lpn_interface_update_state(model_id, lpn_state_y,
+!    &                                  last_state_ydot)
       END IF ! myRank == master
 
         !TODO
@@ -246,6 +246,7 @@ c       CHECK AREA
       REAL*8 testnorm
       INTEGER ierr
       INTEGER error_code
+      REAL*8 total_flow
 
       REAL*8 :: params(2), times(2)
 
@@ -286,14 +287,15 @@ c     Get Density
 
          IF (BCFlag .NE. 'I') THEN
            
-            IF (svZeroDTime > 0.0D0) THEN
+!           IF (svZeroDTime > 0.0D0) THEN
                ! Set initial condition from previous state
                CALL lpn_interface_update_state(model_id, last_state_y,
      &                                                last_state_ydot)
-            END IF
+!           END IF
 
             times = (/svZeroDTime, svZeroDTime+Delt(1)/)
-
+            
+            total_flow = 0.0
             ! Update pressure and flow in the zeroD model
             DO i=1, numCoupledSrfs
                IF (i .LE. numDirichletSrfs) THEN
@@ -301,11 +303,15 @@ c     Get Density
                ELSE
                   params = (/ in_out_sign(i)*QnCoupled(i), 
      &                        in_out_sign(i)*QCoupled(i) /)
+                  total_flow = total_flow + QCoupled(i)
+!                 WRITE(*,*) "[svZeroD] i, QnCoupled(i), QCoupled(i): ",
+!    &                        i, QnCoupled(i),QCoupled(i)
                END IF
                CALL lpn_interface_update_block_params(model_id,
      &                    TRIM(svzd_blk_names(i)),svzd_blk_name_len(i),
      &                                                  times,params,2)
             END DO
+            !WRITE(*,*) "Total LPN flow = ", total_flow
 
             ! Run zeroD simulation
             CALL lpn_interface_run_simulation(model_id, svZeroDTime, 
@@ -317,9 +323,10 @@ c     Get Density
             DO i=1, numCoupledSrfs
                IF (i .LE. numDirichletSrfs) THEN
                   QCoupled(i) = in_out_sign(i)*
-                                lpn_state_y(sol_IDs(2*(i-1)+1))
+     &                          lpn_state_y(sol_IDs(2*(i-1)+1))
                ELSE
                   PCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+2))*pConv
+!                 WRITE(*,*) "[svZeroD] i,PCoupled(i): ", i, PCoupled(i)
                END IF
             END DO
 
@@ -391,11 +398,11 @@ c     Get Density
       END IF
 
       IF (myrank .EQ. master) THEN
-         IF (svZeroDTime > 0.0D0) THEN
-            ! Set initial condition from previous state
-            CALL lpn_interface_update_state(model_id, last_state_y,
-     &                                             last_state_ydot)
-         END IF
+!        IF (svZeroDTime > 0.0D0) THEN
+!           ! Set initial condition from previous state
+!           CALL lpn_interface_update_state(model_id, last_state_y,
+!    &                                             last_state_ydot)
+!        END IF
 
          times = (/svZeroDTime, svZeroDTime+Delt(1)/)
          DO j = numDirichletSrfs, numCoupledSrfs
@@ -409,7 +416,7 @@ c     Get Density
      &                            in_out_sign(i)*QCoupled(i) /)
                   ELSE
                      params = (/ in_out_sign(i)*QnCoupled(i), 
-     &                           in_out_sign(i)*(QCoupled(i) + diff)/)
+     &                           in_out_sign(i)*(QCoupled(i) + diff) /)
                   END IF
                END IF
                CALL lpn_interface_update_block_params(model_id,
@@ -417,6 +424,9 @@ c     Get Density
      &                                          times,params,2)
             END DO
 
+            ! Set initial condition from previous state
+            CALL lpn_interface_update_state(model_id, last_state_y,
+     &                                             last_state_ydot)
             ! Run zeroD simulation
             CALL lpn_interface_run_simulation(model_id, svZeroDTime, 
      &                         lpn_times, lpn_solutions, error_code)
@@ -436,6 +446,7 @@ c     Get Density
                   ENDIF
                END IF
             END DO
+!           WRITE(*,*) "[svZeroD] j,PDer,PBase: ", j, PDer(j), PBase(j)
          END DO
 
 !        IF (svzerodFlag .EQ. 'L') THEN !Last iteration

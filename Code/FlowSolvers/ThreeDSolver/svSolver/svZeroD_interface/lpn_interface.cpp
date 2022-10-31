@@ -70,7 +70,7 @@ extern "C" void lpn_interface_add_model_(const char* lpn_library_name, int* lib_
 extern "C" void lpn_interface_set_external_step_size_(const int* interface_id, double* step_size)
 {
   auto interface = interfaces[*interface_id];
-  std::cout<<"[lpn_interface_set_external_step_size] step_size = "<<*step_size<<std::endl;
+  //std::cout<<"[lpn_interface_set_external_step_size] step_size = "<<*step_size<<std::endl;
   interface->set_external_step_size(*step_size);
 }
 

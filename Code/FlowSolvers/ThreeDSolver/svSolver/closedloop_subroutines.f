@@ -152,6 +152,7 @@ c       CHECK AREA
 
       REAL*8 testnorm
       INTEGER ierr
+      REAL*8 total_flow
 
 c     Get Density
       rho = datmat(1,1,1)
@@ -195,14 +196,19 @@ c     Get Density
          WRITE (1) Delt(1)
          WRITE (1) numDirichletSrfs
          WRITE (1) numNeumannSrfs
+         total_flow = 0.0
          DO i=1, numCoupledSrfs
             IF (i .LE. numDirichletSrfs) THEN
                WRITE (1) PnCoupled(i), PCoupled(i)
             ELSE
                WRITE (1) QnCoupled(i), QCoupled(i)
+               total_flow = total_flow + QCoupled(i)
+               WRITE(*,*) "[GenBC] i, QnCoupled(i), QCoupled(i): ", 
+     &                     i, QnCoupled(i), QCoupled(i)
             END IF
          END DO
          CLOSE (1)
+         WRITE(*,*) "Total LPN flow = ", total_flow
 
          
 c        EXTERNAL CALL TO GENBC
@@ -218,6 +224,7 @@ c        EXTERNAL CALL TO GENBC
                READ (1) QCoupled(i)
             ELSE
                READ (1) PCoupled(i)
+               WRITE(*,*) "[GenBC] i, PCoupled(i): ", i, PCoupled(i)
             END IF
          END DO
          CLOSE(1)
@@ -310,6 +317,7 @@ c        EXTERNAL CALL TO GENBC
                END IF
             END DO
             CLOSE(1)
+           WRITE(*,*) "[GenBC] j,PDer,PBase: ", j, PDer(j), PBase(j)
          END DO
       END IF
 
