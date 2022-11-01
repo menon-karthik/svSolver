@@ -44,8 +44,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #if(VER_CLOSEDLOOP == 1)
 
-!> This module conveys parameters for General Boundary condition. Below 
-!! Defined variables are used to construct LHS and RHS of the solver. 
+!> This module contains parameters for the svZeroD boundary condition interface.
 
       MODULE svZeroD
 

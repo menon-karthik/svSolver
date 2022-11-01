@@ -44,8 +44,7 @@ c     MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
 #if (VER_CLOSEDLOOP == 1)
 
-!> This subroutine initiate the General boundary condition
- 
+! Initialize the svZeroD interface 
       SUBROUTINE initSvZeroD
 
       USE ClosedLoop
@@ -161,7 +160,8 @@ c       CHECK AREA
             STOP
           END IF
         END DO
-
+            
+        ! Create the svZeroD model
         CALL lpn_interface_add_model(TRIM(svzerod_library),
      &                           LEN(TRIM(svzerod_library)),
      &           TRIM(svzerod_file),LEN(TRIM(svzerod_file)),
@@ -203,28 +203,15 @@ c       CHECK AREA
           END IF
         END DO
         last_state_y = lpn_state_y
-!       CALL lpn_interface_update_state(model_id, lpn_state_y,
-!    &                                  last_state_ydot)
+
       END IF ! myRank == master
 
-        !TODO
-        ! Define library path in modules probably
-        ! Read svzerod input file from solver.inp
-        !CALL lpn_interface_add_model_(const char* lpn_library_name, const
-        !char* lpn_json_file, int* block_id)
-        ! Allocate solution vector
-        ! Need to figure out how to map the order of *Coupled(:) to
-        ! svZeroD blocks
-        ! Save block names in correct order (for parameter updates) and
-        ! position of relevant variables in state vector (for return)
-        !TODO
       RETURN
       
       END SUBROUTINE initSvZeroD
 
 
-!> Main subroutine for gathering required information and 
-!! communicating with 0D to acquire necessary information
+! Main subroutine for interfacing with and running svZeroD LPN simulations for boundary conditions
 
       SUBROUTINE calcSvZeroD (y, yold)
        
@@ -262,11 +249,13 @@ c     Get Density
             en(ia,i) = enOfEle*yold(ia,i)
          END DO
       END DO
-      
+     
+      ! Get the flow at the coupled surfaces
       CALL GetFlowQ (QCoupled,  y,    nsrflistCoupled, numCoupledSrfs) 
       CALL GetFlowQ (QnCoupled, yold, nsrflistCoupled, numCoupledSrfs)
       CALL GetFlowQ (ECoupled,  en,   nsrflistCoupled, numCoupledSrfs)
 
+      ! get pressure at coupled surfaces
       CALL integrScalar (PCoupled, y(:,4),     nsrflistCoupled, 
      2   numCoupledSrfs)
 
@@ -279,7 +268,7 @@ c     Get Density
       END DO
 
       IF (myrank .EQ. master) THEN
-         IF (BCFlag .EQ. 'L') THEN !Last iteration
+         IF (BCFlag .EQ. 'L') THEN ! After inner loop iterations (at the end of each time step)
             i = numCoupledSrfs
             CALL printSvZeroD (i, nsrflistCoupled(1:i), QCoupled(1:i), 
      2         PCoupled(1:i), ECoupled(1:i))
@@ -287,11 +276,9 @@ c     Get Density
 
          IF (BCFlag .NE. 'I') THEN
            
-!           IF (svZeroDTime > 0.0D0) THEN
-               ! Set initial condition from previous state
-               CALL lpn_interface_update_state(model_id, last_state_y,
+            ! Set initial condition from previous state
+            CALL lpn_interface_update_state(model_id, last_state_y,
      &                                                last_state_ydot)
-!           END IF
 
             times = (/svZeroDTime, svZeroDTime+Delt(1)/)
             
@@ -311,7 +298,6 @@ c     Get Density
      &                    TRIM(svzd_blk_names(i)),svzd_blk_name_len(i),
      &                                                  times,params,2)
             END DO
-            !WRITE(*,*) "Total LPN flow = ", total_flow
 
             ! Run zeroD simulation
             CALL lpn_interface_run_simulation(model_id, svZeroDTime, 
@@ -330,8 +316,8 @@ c     Get Density
                END IF
             END DO
 
-            IF (BCFlag .EQ. 'L') THEN !Last iteration
-               ! Save state and update time only after last iteration
+            IF (BCFlag .EQ. 'L') THEN
+               ! Save state and update time only after last inner iteration
                CALL lpn_interface_return_ydot(model_id,
      &                                  last_state_ydot)
                last_state_y = lpn_state_y
@@ -341,16 +327,6 @@ c     Get Density
          ENDIF !BCFlag .NE. 'I'
 
       END IF ! myrank .EQ. master
-
-         ! TODO
-         ! Figure out initial condition
-         ! Update block paramaters by sending PnCoupled, PCoupled,
-         ! QnCoupled, QCoupled to svZeroD
-         ! Run svZeroD
-         ! Extract PnCoupled, PCoupled, QnCoupled, QCoupled from state
-         ! vector or from new function that returns this (in
-         ! lpn_interface)
-         ! TODO
       
       i = MAXSURF + 1
       CALL MPI_BCAST(QCoupled, i, MPI_DOUBLE_PRECISION, master,
@@ -362,8 +338,7 @@ c     Get Density
       RETURN
       END SUBROUTINE calcsvZeroD
 
-!> Main subroutine for calculating the surface pressure 
-!! derivative with respect to flow rate
+! Subroutine for calculating the surface pressure derivative with respect to flow rate
 
       SUBROUTINE calcsvZeroDBCDerivative
        
@@ -386,7 +361,6 @@ c     Get Density
       IF (numNeumannSrfs .EQ. 0) RETURN
       
       PDerFlag = .FALSE.
-      !i0 = numDirichletSrfs
 
       diff = SUM(ABS(QCoupled(numDirichletSrfs+1:numCoupledSrfs)))
      2   /REAL(numNeumannSrfs,8)
@@ -398,11 +372,6 @@ c     Get Density
       END IF
 
       IF (myrank .EQ. master) THEN
-!        IF (svZeroDTime > 0.0D0) THEN
-!           ! Set initial condition from previous state
-!           CALL lpn_interface_update_state(model_id, last_state_y,
-!    &                                             last_state_ydot)
-!        END IF
 
          times = (/svZeroDTime, svZeroDTime+Delt(1)/)
          DO j = numDirichletSrfs, numCoupledSrfs
@@ -449,14 +418,6 @@ c     Get Density
 !           WRITE(*,*) "[svZeroD] j,PDer,PBase: ", j, PDer(j), PBase(j)
          END DO
 
-!        IF (svzerodFlag .EQ. 'L') THEN !Last iteration
-!           ! Save state and update time only after last iteration
-!           CALL lpn_interface_return_ydot(model_id,
-!    &                               last_state_ydot)
-!           last_state_y = lpn_state_y
-!           ! Keep track of current time
-!           svZeroDTime = svZeroDTime + Delt(1)
-!        END IF
       END IF ! myrank .EQ. master
 
       i = MAXSURF + 1
@@ -466,9 +427,7 @@ c     Get Density
       RETURN
       END SUBROUTINE calcsvZeroDBCDerivative
 
-
-
-!> Writting results to the disk
+! Write results to the disk
 
       SUBROUTINE printSvZeroD (nSrfs, surfID, Q, P, E)
        
@@ -487,7 +446,7 @@ c     Get Density
 
       IF (nSrfs .EQ. 0) RETURN
 
-      fileNames = (/'QGeneral','PGeneral','EGeneral'/)
+      fileNames = (/'Q_svZeroD','P_svZeroD','E_svZeroD'/)
 
       R(1,:) = Q
       R(2,:) = P

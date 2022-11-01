@@ -183,7 +183,6 @@ c     Get Density
       END DO
 
       IF (myrank .EQ. master) THEN
-         !IF (GenFlag .EQ. 'L') THEN
          IF (BCFlag .EQ. 'L') THEN
             i = numCoupledSrfs
             CALL printGen (i, nsrflistCoupled(1:i), QCoupled(1:i), 
@@ -191,7 +190,6 @@ c     Get Density
          END IF
 
          OPEN (1,FILE='GenBC.int', STATUS='UNKNOWN', FORM='UNFORMATTED')
-         !WRITE (1) GenFlag
          WRITE (1) BCFlag
          WRITE (1) Delt(1)
          WRITE (1) numDirichletSrfs

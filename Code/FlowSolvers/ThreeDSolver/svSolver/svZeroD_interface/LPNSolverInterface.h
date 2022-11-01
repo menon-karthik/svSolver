@@ -31,7 +31,6 @@ class LPNSolverInterface
     void set_external_step_size(double step_size);
 
     // Interface functions.
-    //
     std::string lpn_initialize_name_;
     void (*lpn_initialize_)(std::string, int&, int&, int&, int&, std::vector<std::string>&, std::vector<std::string>&);
 
@@ -70,7 +69,6 @@ class LPNSolverInterface
     int num_output_steps_ = 0;
     std::vector<std::string> block_names_;
     std::vector<std::string> variable_names_;
-    //std::vector<double> solution_;
 };
 
 #endif
