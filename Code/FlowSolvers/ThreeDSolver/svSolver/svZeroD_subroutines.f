@@ -204,6 +204,10 @@ c       CHECK AREA
         END DO
         last_state_y = lpn_state_y
 
+        ! Initialize output file
+        CALL lpn_interface_write_solution(model_id, svZeroDTime,
+     &                                     lpn_state_y, 0) 
+
       END IF ! myRank == master
 
       RETURN
@@ -321,6 +325,9 @@ c     Get Density
                CALL lpn_interface_return_ydot(model_id,
      &                                  last_state_ydot)
                last_state_y = lpn_state_y
+               ! Write put the state vector
+               CALL lpn_interface_write_solution(model_id, svZeroDTime,
+     &                                            lpn_state_y, 1) 
                ! Keep track of current time
                svZeroDTime = svZeroDTime + Delt(1)
             END IF

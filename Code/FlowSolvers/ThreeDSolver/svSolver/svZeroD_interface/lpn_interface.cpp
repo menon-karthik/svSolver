@@ -6,6 +6,7 @@
 #include <map>
 #include <algorithm>
 #include <string>
+#include <iterator>
 
 static std::map<int,LPNSolverInterface*> interfaces;
 
@@ -178,5 +179,35 @@ extern "C" void lpn_interface_run_simulation_(const int* interface_id, const dou
   }
   for (int i = 0; i < solutions_vec_size; i++) {
     lpn_solutions[i] = lpn_solutions_vec[i];
+  }
+}
+
+//----------------------------
+// Write out the solution vector to a runing file
+//----------------------------
+//
+extern "C" void lpn_interface_write_solution_(const int* interface_id, const double* lpn_time, const double* lpn_solution, int* flag)
+{
+  auto interface = interfaces[*interface_id];
+  int sys_size = interface->system_size_;
+  if (*flag == 0) { // Initialize output file: Write header with variable names
+    std::vector<std::string> variable_names;
+    variable_names = interface->variable_names_;
+    std::ofstream out_file;
+    out_file.open("svZeroD_data", std::ios::out | std::ios::app);
+    out_file<<sys_size<<" ";
+    for (int i = 0; i < sys_size; i++) {
+      out_file<<static_cast<std::string>(variable_names[i])<<" ";
+    }
+    out_file<<'\n';
+  } else {
+    std::ofstream out_file;
+    out_file.open("svZeroD_data", std::ios::out | std::ios::app);
+    out_file<<*lpn_time<<" ";
+    for (int i = 0; i < sys_size; i++) {
+      out_file<<lpn_solution[i]<<" ";
+    }
+    out_file<<'\n';
+    out_file.close();
   }
 }

@@ -21,7 +21,8 @@ class LPNSolverInterface
     void load_library(const std::string& interface_lib);
     void initialize(std::string file_name);
     void increment_time(const double time, std::vector<double>& solution);
-    void run_simulation(const double time, std::vector<double>& output_times, std::vector<double>& output_solutions, int& error_code);
+    void run_simulation(const double time, std::vector<double>& output_times, 
+	                std::vector<double>& output_solutions, int& error_code);
     void update_block_params(std::string block_name, std::vector<double>& new_params);
     void read_block_params(std::string block_name, std::vector<double>& block_params);
     void get_block_node_IDs(std::string block_name, std::vector<int>& IDs);
@@ -32,13 +33,15 @@ class LPNSolverInterface
 
     // Interface functions.
     std::string lpn_initialize_name_;
-    void (*lpn_initialize_)(std::string, int&, int&, int&, int&, std::vector<std::string>&, std::vector<std::string>&);
+    void (*lpn_initialize_)(std::string, int&, int&, int&, int&, std::vector<std::string>&, 
+	                    std::vector<std::string>&);
 
     std::string lpn_increment_time_name_;
     void (*lpn_increment_time_)(const int, const double, std::vector<double>& solution);
 
     std::string lpn_run_simulation_name_;
-    void (*lpn_run_simulation_)(const int, const double, std::vector<double>& output_times, std::vector<double>& output_solutions, int& error_code);
+    void (*lpn_run_simulation_)(const int, const double, std::vector<double>& output_times, 
+	                        std::vector<double>& output_solutions, int& error_code);
     
     std::string lpn_update_block_params_name_;
     void (*lpn_update_block_params_)(const int, std::string, std::vector<double>& new_params);
