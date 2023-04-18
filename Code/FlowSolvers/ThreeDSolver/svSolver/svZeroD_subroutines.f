@@ -204,9 +204,11 @@ c       CHECK AREA
         END DO
         last_state_y = lpn_state_y
 
-        ! Initialize output file
-        CALL lpn_interface_write_solution(model_id, svZeroDTime,
+        IF (writeSvZeroD == 1) THEN
+           ! Initialize output file
+           CALL lpn_interface_write_solution(model_id, svZeroDTime,
      &                                     lpn_state_y, 0) 
+        ENDIF
 
       END IF ! myRank == master
 
@@ -272,11 +274,13 @@ c     Get Density
       END DO
 
       IF (myrank .EQ. master) THEN
-         IF (BCFlag .EQ. 'L') THEN ! After inner loop iterations (at the end of each time step)
-            i = numCoupledSrfs
-            CALL printSvZeroD (i, nsrflistCoupled(1:i), QCoupled(1:i), 
-     2         PCoupled(1:i), ECoupled(1:i))
-         END IF
+         IF (writeSvZeroD == 1) THEN
+            IF (BCFlag .EQ. 'L') THEN ! After inner loop iterations (at the end of each time step)
+               i = numCoupledSrfs
+               CALL printSvZeroD (i, nsrflistCoupled(1:i),
+     &            QCoupled(1:i), PCoupled(1:i), ECoupled(1:i))
+            END IF
+         ENDIF
 
          IF (BCFlag .NE. 'I') THEN
            
@@ -290,7 +294,7 @@ c     Get Density
             ! Update pressure and flow in the zeroD model
             DO i=1, numCoupledSrfs
                IF (i .LE. numDirichletSrfs) THEN
-                  params = (/ PnCoupled(i)/pConv, PCoupled(i)/pConv /)
+                  params = (/ PnCoupled(i), PCoupled(i) /)
                ELSE
                   params = (/ in_out_sign(i)*QnCoupled(i), 
      &                        in_out_sign(i)*QCoupled(i) /)
@@ -315,7 +319,7 @@ c     Get Density
                   QCoupled(i) = in_out_sign(i)*
      &                          lpn_state_y(sol_IDs(2*(i-1)+1))
                ELSE
-                  PCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+2))*pConv
+                  PCoupled(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
 !                 WRITE(*,*) "[svZeroD] i,PCoupled(i): ", i, PCoupled(i)
                END IF
             END DO
@@ -325,9 +329,13 @@ c     Get Density
                CALL lpn_interface_return_ydot(model_id,
      &                                  last_state_ydot)
                last_state_y = lpn_state_y
-               ! Write put the state vector
-               CALL lpn_interface_write_solution(model_id, svZeroDTime,
-     &                                            lpn_state_y, 1) 
+
+               IF (writeSvZeroD == 1) THEN
+                  ! Write the state vector to a file
+                  CALL lpn_interface_write_solution(model_id,
+     &                                       svZeroDTime,lpn_state_y,1)
+               ENDIF
+
                ! Keep track of current time
                svZeroDTime = svZeroDTime + Delt(1)
             END IF
@@ -385,7 +393,7 @@ c     Get Density
             ! Update pressure and flow in the zeroD model
             DO i=1, numCoupledSrfs
                IF (i .LE. numDirichletSrfs) THEN
-                  params = (/ PnCoupled(i)/pConv, PCoupled(i)/pConv /)
+                  params = (/ PnCoupled(i), PCoupled(i) /)
                ELSE
                   IF (i .NE. j) THEN
                      params = ( / in_out_sign(i)*QnCoupled(i), 
@@ -414,10 +422,10 @@ c     Get Density
                IF (i > numDirichletSrfs) THEN
                   IF (i .NE. j) THEN
                      IF (j .EQ. numDirichletSrfs) THEN
-                        PBase(i) = lpn_state_y(sol_IDs(2*(i-1)+2))*pConv
+                        PBase(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
                      END IF
                   ELSE
-                     PDer(i) = lpn_state_y(sol_IDs(2*(i-1)+2))*pConv
+                     PDer(i) = lpn_state_y(sol_IDs(2*(i-1)+2))
                      PDer(i) = (PDer(i) - PBase(i))/diff
                   ENDIF
                END IF

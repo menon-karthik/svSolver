@@ -59,7 +59,7 @@ c      \\Common Block variables for "no module"
        INTEGER iwallmassfactor, iwallstiffactor,
      & nProps
        INTEGER iGenInitialization,iGenFromFile
-       INTEGER svZeroDInitialization,iSvZeroD
+       INTEGER svZeroDInitialization,iSvZeroD,writeSvZeroD
        INTEGER numNeumannSrfs,nsrflistNeumann(0:MAXSURF)
        INTEGER numDirichletSrfs,nsrflistDirichlet(0:MAXSURF)
        INTEGER numNormalSrfs,nsrflistNormal(0:MAXSURF)
@@ -75,7 +75,7 @@ c         ======================================================
 c                 ADDED FOR CONSISTENCY - CLOSED LOOP
      &            numNeumannSrfs,nsrflistNeumann,
      &            iGenInitialization,iGenFromFile,
-     &            svZeroDInitialization,iSvZeroD,
+     &            svZeroDInitialization,iSvZeroD,writeSvZeroD,
      &            numDirichletSrfs,nsrflistDirichlet,
 c                 ==============================================
      &            numImpSrfs, nsrflistImp,impfile,

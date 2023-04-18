@@ -501,6 +501,7 @@ extern "C" {
     int iGenFromFile;
     int svZeroDInitialization;
     int iSvZeroD;
+    int writeSvZeroD;
     int numDirichletSrfs;
     int nsrflistDirichlet[MAXSURF+1];
     //==================================

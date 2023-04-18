@@ -337,6 +337,11 @@ c
          IF (iSvZeroD == 0) THEN
             CALL initGenBC
          ELSE
+!           IF (writeSvZeroD == 1) THEN
+!              write_svZeroD_data = 1
+!           ELSE
+!              write_svZeroD_data = 0
+!           ENDIF
             CALL initSvZeroD
          END IF
 
